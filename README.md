@@ -1,76 +1,105 @@
-# Lab Machine Setup
+# BSides LilyGO Passport
 
-Scripts for provisioning Lubuntu lab machines before the event.
+A collection of conference labs built around the LILYGO T-Dongle-S3 and related station materials for BSides-style hands-on learning. The repository is meant to hold more than machine setup: it includes the lab firmware projects themselves, host provisioning scripts, and the participant/facilitator documentation used to run the stations.
 
-## Structure
+## What This Repository Contains
 
-The repository keeps one ESP-IDF project per lab under `labs/<lab-id>/` at the repo root. Each lab directory now contains its own `setup.sh` so firmware and host provisioning steps stay together.
+At a high level, this repo is organized around individual labs under `labs/`, plus shared setup and documentation assets at the repo root.
 
+Current contents include:
+
+- ESP-IDF firmware projects for LILYGO-based labs
+- Per-lab host setup scripts and pre-event provisioning hooks
+- Facilitator guides and participant handouts
+- Reusable template files for future station writeups
+- Shared machine setup scripts for Lubuntu-based event systems
+
+## Current Lab
+
+Right now the main lab in the repo is:
+
+- `labs/01-trust-keyboard`
+
+That lab demonstrates USB HID trust using a LILYGO T-Dongle-S3 that enumerates as a keyboard, waits for a physical button press, then injects a benign command on a Lubuntu host.
+
+See:
+
+- `labs/01-trust-keyboard/README.md` for the technical lab reference
+- `labs/01-trust-keyboard/PARTICIPANT.md` for the attendee-facing handout
+- `labs/01-trust-keyboard/FACILITATOR.md` for the volunteer/facilitator guide
+
+## Repository Layout
+
+```text
+bsides-lilygo-passport/
+├── README.md                            # Project overview and onboarding
+├── setup-base.sh                        # One-time machine tooling
+├── setup-labs.sh                        # Runs per-lab setup scripts
+├── provision.sh                         # Base setup + all lab setup
+├── participant_handout_template.md      # Reusable participant template
+├── builder_volunteer_guide_template.md  # Reusable builder/volunteer template
+└── labs/
+    └── 01-trust-keyboard/
+        ├── README.md
+        ├── PARTICIPANT.md
+        ├── FACILITATOR.md
+        ├── setup.sh
+        └── main/
 ```
-bsides-lilygo-passport/          # clone of this repo (LAB_DIR)
-├── setup-base.sh                # One-time machine tooling (ESP-IDF, USB access)
-├── setup-labs.sh                # Discovers and runs all lab setup scripts
-├── provision.sh                 # Runs setup-base.sh + setup-labs.sh
-├── labs/
-│   └── 01-trust-keyboard/
-│       ├── setup.sh             # “Trust Me, I'm a Keyboard” setup entrypoint
-│       ├── CMakeLists.txt
-│       └── main/
-└── setup/                       # setup docs
-```
 
-## Quickstart
+## Getting Started
+
+If you are here to provision a machine for the event, setup is still the quickest entry point.
 
 Run these from the repository root:
 
 ```bash
-# 1. Install base tooling (once per machine)
+# 1. Install shared tooling (once per machine)
 ./setup-base.sh
 
-# 2. Log out and back in (required if user groups changed)
+# 2. Log out and back in if user groups changed
 
-# 3. Run all lab setups
+# 3. Provision all labs
 ./setup-labs.sh
 
-# 4. Or run a specific lab by name
+# 4. Or provision a specific lab
 ./setup-labs.sh trust-keyboard
 ```
 
-Or run everything in one command:
+Or run the full process in one command:
 
 ```bash
 ./provision.sh
 ```
 
----
+## Setup Scripts
 
-## setup-base.sh
+### `setup-base.sh`
 
-Run once per machine before the event. Lab-agnostic.
+Run once per machine before the event. This is lab-agnostic setup.
 
 What it does:
-- Installs system packages required by ESP-IDF (`git`, `cmake`, `ninja-build`, etc.)
-- Clones and installs ESP-IDF `v5.3.2` (ESP32-S3 target only) to `~/esp/esp-idf`
-- Adds `source ~/esp/esp-idf/export.sh` to `~/.bashrc` so `idf.py` is always in PATH
-- Adds a udev rule for VID `303a` (Espressif) so USB devices are accessible without `sudo`
-- Adds the current user to the `dialout` and `plugdev` groups for `/dev/ttyACM*` serial access
 
-Note: if group membership changes, the user must log out and back in before flashing works without `sudo`.
+- Installs shared system packages needed by ESP-IDF
+- Clones and installs ESP-IDF `v5.3.2` for `esp32s3`
+- Adds ESP-IDF export sourcing to `~/.bashrc`
+- Installs a udev rule for Espressif USB devices
+- Adds the current user to `dialout` and `plugdev`
 
----
+If group membership changes, the user must log out and back in before flashing works without `sudo`.
 
-## setup-labs.sh
+### `setup-labs.sh`
 
-Discovers and runs every `labs/*/setup.sh` in alphabetical order.
+Discovers and runs each `labs/*/setup.sh` script in alphabetical order.
 
 ```bash
-./setup-labs.sh                 # run all labs
-./setup-labs.sh trust-keyboard  # run only labs whose directory name contains that substring
+./setup-labs.sh
+./setup-labs.sh trust-keyboard
 ```
 
-Each lab script runs in its own bash process, so a failure in one lab is reported but does not abort the others.
+Each lab setup runs in its own shell process, so one failing lab does not abort the rest.
 
-Environment variables passed to each lab's `setup.sh`:
+Environment variables passed to each lab `setup.sh`:
 
 | Variable | Value |
 |----------|-------|
@@ -78,35 +107,27 @@ Environment variables passed to each lab's `setup.sh`:
 | `ESP_IDF_DIR` | Path to ESP-IDF (`~/esp/esp-idf`) |
 | `LAB_NAME` | The directory name of the lab being set up |
 
----
+### `provision.sh`
 
-## Adding a new lab
+Convenience wrapper that runs:
 
-1. At the repository root, add the ESP-IDF project:
-   ```
-   labs/02-my-new-lab/     # firmware sources, CMakeLists.txt, main/, …
-   ```
+1. `setup-base.sh`
+2. `setup-labs.sh`
 
-2. In the same lab directory, add a setup script:
-   ```
-   labs/02-my-new-lab/setup.sh
-   ```
-   The script should `cd "$LAB_DIR/labs/$LAB_NAME"` (see `labs/01-trust-keyboard/setup.sh`) so the build path matches the repo. It should be self-contained:
-   - Clone or update the repo (if needed)
-   - Build firmware and create any host files (flags, configs, etc.)
-   - Print a short summary when done
+Use it when preparing a new event machine from scratch.
 
-3. Check that `idf.py` is available at the start if your lab uses ESP-IDF:
-   ```bash
-   if ! command -v idf.py > /dev/null 2>&1; then
-       echo "ERROR: idf.py not found. Run setup-base.sh first." >&2
-       exit 1
-   fi
-   ```
+## Adding a New Lab
 
-4. `setup-labs.sh` will pick it up automatically; no registration needed.
+To add another station:
 
-Minimal `setup.sh` template:
+1. Add the lab project under `labs/<lab-id>/`
+2. Add a `setup.sh` in that same lab directory
+3. Keep the lab self-contained: firmware, docs, and host setup steps should live together
+4. If it uses ESP-IDF, verify `idf.py` exists at the start of the setup script
+5. Add lab-specific `README.md`, participant, and facilitator docs as needed
+
+Minimal `setup.sh` example:
+
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
@@ -119,7 +140,14 @@ info() { echo -e "${GREEN}[+]${NC} $*"; }
 info "My lab is ready."
 ```
 
----
+## Templates
+
+Use these when creating new lab docs:
+
+- `participant_handout_template.md`
+- `builder_volunteer_guide_template.md`
+
+They match the structure used for conference-facing participant and volunteer materials.
 
 ## Troubleshooting
 
