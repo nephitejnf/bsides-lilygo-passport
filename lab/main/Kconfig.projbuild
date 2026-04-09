@@ -1,0 +1,64 @@
+menu "BSides BadUSB Configuration"
+
+    config PAYLOAD_COMMAND
+        string "Command to type on the host"
+        default "cat ~/flag.txt"
+        help
+            The shell command typed into the host terminal.
+            This is the payload that reads the flag file.
+
+    config OPEN_TERMINAL
+        bool "Open a terminal first (Ctrl+Alt+T)"
+        default y
+        help
+            Send Ctrl+Alt+T before typing the command.
+            Works on Lubuntu / LXQt and most Ubuntu-based desktops.
+            Disable if a terminal is already open/focused.
+
+    config TERMINAL_OPEN_DELAY_MS
+        int "Delay after opening terminal (ms)"
+        default 1500
+        range 500 5000
+        depends on OPEN_TERMINAL
+        help
+            Time to wait for the terminal emulator to appear
+            before typing begins. Increase on slower machines.
+
+    config KEY_PRESS_MS
+        int "Key press duration (ms)"
+        default 50
+        range 10 200
+        help
+            How long each key is held down.
+
+    config KEY_RELEASE_MS
+        int "Key release gap (ms)"
+        default 50
+        range 10 200
+        help
+            Delay between releasing a key and pressing the next.
+
+    config TYPING_INITIAL_DELAY_MS
+        int "Initial delay before typing (ms)"
+        default 200
+        range 50 2000
+        help
+            Short pause after button press and before any HID
+            output, giving the USB stack time to settle.
+
+    config ENABLE_LCD
+        bool "Enable ST7735 LCD display"
+        default y
+        help
+            Drive the on-board 0.96" ST7735 LCD.
+            Disable to save flash/RAM or if the display is absent.
+
+    config LCD_BACKLIGHT_INVERTED
+        bool "LCD backlight is active-low"
+        default y
+        depends on ENABLE_LCD
+        help
+            Some T-Dongle-S3 revisions invert the backlight pin.
+            Enable if the display stays dark with the default setting.
+
+endmenu
